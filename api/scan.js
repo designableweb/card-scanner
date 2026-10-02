@@ -36,7 +36,7 @@ module.exports = async (req, res) => {
     ].join('\n');
  
     // Model ID. Swap this string to use a newer model.  ANCHOR: MODEL_ID
-    const MODEL = 'claude-3-5-sonnet-20241022';
+    const MODEL = 'claude-haiku-4-5-20251001';
  
     const anthropicRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
