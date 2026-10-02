@@ -1,0 +1,9 @@
+{
+  "name": "card-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Business card scanner for networking events",
+  "engines": {
+    "node": ">=18"
+  }
+}

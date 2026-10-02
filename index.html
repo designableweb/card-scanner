@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Card Scanner</title>
+<style>
+  :root{
+    --bg:#0f1115; --card:#1a1d24; --line:#2a2f3a; --text:#e8eaed;
+    --muted:#9aa3b2; --accent:#3b82f6; --accent2:#22c55e; --danger:#ef4444;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+  header{padding:16px;border-bottom:1px solid var(--line);display:flex;align-items:center;gap:10px}
+  header h1{font-size:17px;margin:0;font-weight:600}
+  header .group{font-size:13px;color:var(--muted);margin-left:auto}
+  main{padding:16px;max-width:620px;margin:0 auto}
+  nav{display:flex;gap:6px;margin-bottom:16px}
+  nav button{flex:1;padding:10px;border:1px solid var(--line);background:var(--card);color:var(--muted);
+    border-radius:10px;font-size:14px;font-weight:600;cursor:pointer}
+  nav button.active{color:var(--text);border-color:var(--accent);background:#17233b}
+  .view{display:none}
+  .view.active{display:block}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px;
+    border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;color:#fff;background:var(--accent)}
+  .btn.green{background:var(--accent2)}
+  .btn.ghost{background:transparent;border:1px solid var(--line);color:var(--text)}
+  .btn.small{width:auto;padding:9px 12px;font-size:14px;border-radius:10px}
+  .hint{color:var(--muted);font-size:13px;margin:10px 2px}
+  label{display:block;font-size:12px;color:var(--muted);margin:12px 2px 4px}
+  input[type=text],input[type=url],input[type=email]{width:100%;padding:12px;border-radius:10px;
+    border:1px solid var(--line);background:#10131a;color:var(--text);font-size:15px}
+  .contact-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .contact-card h3{margin:0 0 2px;font-size:16px}
+  .contact-card .sub{color:var(--muted);font-size:13px;margin-bottom:4px}
+  .tag{display:inline-block;background:#17233b;color:#9cc2ff;border:1px solid #27406b;
+    font-size:11px;padding:3px 8px;border-radius:999px;margin-top:4px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .spinner{display:inline-block;width:18px;height:18px;border:2px solid #ffffff55;border-top-color:#fff;
+    border-radius:50%;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .filters{display:flex;gap:8px;margin-bottom:12px}
+  .filters input,.filters select{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);
+    background:#10131a;color:var(--text);font-size:14px}
+  .empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:14px}
+  .err{background:#2a1416;border:1px solid #5b2327;color:#ffb4b4;padding:10px 12px;border-radius:10px;
+    font-size:13px;margin-top:12px;white-space:pre-wrap}
+  .divider{height:1px;background:var(--line);margin:18px 0}
+  a.link{color:#9cc2ff}
+</style>
+</head>
+<body>
+<header>
+  <h1>Card Scanner</h1>
+  <span class="group" id="groupLabel"></span>
+</header>
+
+<main>
+  <nav>
+    <button data-view="scan" class="active">Scan</button>
+    <button data-view="directory">Directory</button>
+    <button data-view="settings">Settings</button>
+  </nav>
+
+  <!-- SCAN VIEW -->
+  <section class="view active" id="view-scan">
+    <button class="btn" id="scanBtn">Scan a card</button>
+    <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
+    <p class="hint">Take a photo of the business card. The photo is read and then discarded. Nothing is stored on a server.</p>
+    <div id="scanStatus"></div>
+    <div id="reviewArea"></div>
+  </section>
+
+  <!-- DIRECTORY VIEW -->
+  <section class="view" id="view-directory">
+    <div class="filters">
+      <input type="text" id="search" placeholder="Search name, company, email...">
+      <select id="industryFilter"><option value="">All industries</option></select>
+    </div>
+    <div id="directoryList"></div>
+    <div class="divider"></div>
+    <button class="btn ghost" id="exportBtn">Save my directory (HTML file)</button>
+    <p class="hint">Saves a single file to your phone with every contact, searchable, that survives clearing your browser.</p>
+  </section>
+
+  <!-- SETTINGS VIEW -->
+  <section class="view" id="view-settings">
+    <label>Your name</label>
+    <input type="text" id="setName" placeholder="Jane Smith">
+    <label>Your scheduling link (Calendly or any booking URL)</label>
+    <input type="url" id="setLink" placeholder="https://calendly.com/yourname/30min">
+    <div style="margin-top:16px"></div>
+    <button class="btn green" id="saveSettings">Save settings</button>
+    <p class="hint">The booking button emails this link to the contact you just met.</p>
+  </section>
+</main>
+
+<script>
+(function(){
+  "use strict";
+
+  // ---------- storage ----------
+  var SKEY = 'cardscanner_settings';
+  var CKEY = 'cardscanner_contacts';
+  var settings = load(SKEY, {name:'', bookingLink:''});
+  var contacts = load(CKEY, []);
+
+  function load(k, fallback){
+    try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }
+    catch(e){ return fallback; }
+  }
+  function save(k, v){
+    try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){}
+  }
+
+  // ---------- group from URL ----------
+  var params = new URLSearchParams(location.search);
+  var group = params.get('g') || '';
+  if (group) document.getElementById('groupLabel').textContent = group;
+
+  // ---------- nav ----------
+  var navBtns = document.querySelectorAll('nav button');
+  navBtns.forEach(function(b){
+    b.addEventListener('click', function(){
+      navBtns.forEach(function(x){x.classList.remove('active');});
+      b.classList.add('active');
+      document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});
+      document.getElementById('view-' + b.dataset.view).classList.add('active');
+      if (b.dataset.view === 'directory') renderDirectory();
+    });
+  });
+
+  // ---------- settings ----------
+  document.getElementById('setName').value = settings.name || '';
+  document.getElementById('setLink').value = settings.bookingLink || '';
+  document.getElementById('saveSettings').addEventListener('click', function(){
+    settings.name = document.getElementById('setName').value.trim();
+    settings.bookingLink = document.getElementById('setLink').value.trim();
+    save(SKEY, settings);
+    alert('Saved.');
+  });
+
+  // ---------- scan ----------
+  var scanBtn = document.getElementById('scanBtn');
+  var fileInput = document.getElementById('fileInput');
+  var scanStatus = document.getElementById('scanStatus');
+  var reviewArea = document.getElementById('reviewArea');
+
+  scanBtn.addEventListener('click', function(){ fileInput.click(); });
+
+  fileInput.addEventListener('change', function(){
+    var file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+    reviewArea.innerHTML = '';
+    scanStatus.innerHTML = '<button class="btn" disabled><span class="spinner"></span> Reading card...</button>';
+    fileToResizedJpeg(file, 1400, 0.72).then(function(img){
+      return fetch('/api/scan', {
+        method:'POST',
+        headers:{'content-type':'application/json'},
+        body: JSON.stringify({ image: img.base64, mediaType: img.mediaType })
+      });
+    }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
+      .then(function(res){
+        scanStatus.innerHTML = '';
+        fileInput.value = '';
+        if (!res.ok) {
+          showError(res.j.error, res.j.detail || res.j.raw);
+          return;
+        }
+        showReview(res.j);
+      }).catch(function(err){
+        scanStatus.innerHTML = '';
+        fileInput.value = '';
+        showError('Something went wrong', String(err));
+      });
+  });
+
+  function showError(msg, detail){
+    var d = document.createElement('div');
+    d.className = 'err';
+    d.textContent = (msg || 'Error') + (detail ? ('\n\n' + detail) : '');
+    reviewArea.appendChild(d);
+  }
+
+  function field(labelText, id, value){
+    return '<label>' + labelText + '</label><input type="text" id="' + id + '" value="' +
+      String(value || '').replace(/"/g,'&quot;') + '">';
+  }
+
+  function showReview(c){
+    reviewArea.innerHTML =
+      '<div class="contact-card">' +
+        '<p class="hint" style="margin-top:0">Check the details, then save.</p>' +
+        field('First name','f_firstName',c.firstName) +
+        field('Last name','f_lastName',c.lastName) +
+        field('Title','f_title',c.title) +
+        field('Company','f_company',c.company) +
+        field('Phone','f_phone',c.phone) +
+        field('Email','f_email',c.email) +
+        field('Website','f_website',c.website) +
+        field('Industry','f_industry',c.industry) +
+        '<div style="margin-top:16px"></div>' +
+        '<button class="btn green" id="saveContact">Save to directory</button>' +
+      '</div>';
+    document.getElementById('saveContact').addEventListener('click', function(){
+      var contact = {
+        firstName: val('f_firstName'), lastName: val('f_lastName'),
+        title: val('f_title'), company: val('f_company'),
+        phone: val('f_phone'), email: val('f_email'),
+        website: val('f_website'), industry: val('f_industry'),
+        fullName: (val('f_firstName') + ' ' + val('f_lastName')).trim(),
+        savedAt: Date.now()
+      };
+      contacts.unshift(contact);
+      save(CKEY, contacts);
+      reviewArea.innerHTML = '<div class="contact-card">Saved. ' +
+        '<div class="row">' +
+        '<button class="btn green small" id="postAdd">Add to phone contacts</button>' +
+        '<button class="btn small" id="postBook">Email booking link</button>' +
+        '</div></div>';
+      document.getElementById('postAdd').addEventListener('click', function(){ downloadVCard(contact); });
+      document.getElementById('postBook').addEventListener('click', function(){ sendBooking(contact); });
+    });
+  }
+  function val(id){ return document.getElementById(id).value.trim(); }
+
+  // ---------- image resize ----------
+  function fileToResizedJpeg(file, maxDim, quality){
+    return new Promise(function(resolve, reject){
+      var img = new Image();
+      var url = URL.createObjectURL(file);
+      img.onload = function(){
+        URL.revokeObjectURL(url);
+        var w = img.width, h = img.height;
+        if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else if (h >= w && h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+        var canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        var dataUrl = canvas.toDataURL('image/jpeg', quality);
+        resolve({ base64: dataUrl.split(',')[1], mediaType: 'image/jpeg' });
+      };
+      img.onerror = reject;
+      img.src = url;
+    });
+  }
+
+  // ---------- vCard ----------
+  function buildVCard(c){
+    function esc(s){ return String(s||'').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n'); }
+    var lines = ['BEGIN:VCARD','VERSION:3.0',
+      'N:' + esc(c.lastName) + ';' + esc(c.firstName) + ';;;',
+      'FN:' + esc(c.fullName || (c.firstName + ' ' + c.lastName).trim())];
+    if (c.company) lines.push('ORG:' + esc(c.company));
+    if (c.title) lines.push('TITLE:' + esc(c.title));
+    if (c.phone) lines.push('TEL;TYPE=CELL:' + esc(c.phone));
+    if (c.email) lines.push('EMAIL;TYPE=INTERNET:' + esc(c.email));
+    if (c.website) lines.push('URL:' + esc(c.website));
+    if (c.industry) lines.push('CATEGORIES:' + esc(c.industry));
+    lines.push('END:VCARD');
+    return lines.join('\r\n');
+  }
+  function downloadVCard(c){
+    var blob = new Blob([buildVCard(c)], { type:'text/vcard' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = (c.fullName || 'contact').replace(/[^\w]+/g,'_') + '.vcf';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  }
+
+  // ---------- booking ----------
+  function sendBooking(c){
+    if (!settings.bookingLink) { alert('Add your scheduling link in Settings first.'); return; }
+    var subject = encodeURIComponent('Great meeting you');
+    var greet = 'Great meeting you' + (c.firstName ? (', ' + c.firstName) : '') + '!';
+    var body = encodeURIComponent(greet + ' Grab a time that works for you here: ' + settings.bookingLink);
+    window.location.href = 'mailto:' + (c.email || '') + '?subject=' + subject + '&body=' + body;
+  }
+
+  // ---------- directory ----------
+  var search = document.getElementById('search');
+  var industryFilter = document.getElementById('industryFilter');
+  search.addEventListener('input', renderDirectory);
+  industryFilter.addEventListener('change', renderDirectory);
+
+  function renderDirectory(){
+    var list = document.getElementById('directoryList');
+    // refresh industry options
+    var inds = {};
+    contacts.forEach(function(c){ if (c.industry) inds[c.industry] = true; });
+    var current = industryFilter.value;
+    industryFilter.innerHTML = '<option value="">All industries</option>' +
+      Object.keys(inds).sort().map(function(i){
+        return '<option value="' + i.replace(/"/g,'&quot;') + '">' + i + '</option>';
+      }).join('');
+    industryFilter.value = current;
+
+    var q = search.value.trim().toLowerCase();
+    var ind = industryFilter.value;
+    var rows = contacts.filter(function(c){
+      if (ind && c.industry !== ind) return false;
+      if (!q) return true;
+      return [c.fullName,c.company,c.email,c.title,c.industry].join(' ').toLowerCase().indexOf(q) !== -1;
+    });
+
+    if (!rows.length) {
+      list.innerHTML = '<div class="empty">No contacts yet. Scan a card to get started.</div>';
+      return;
+    }
+    list.innerHTML = rows.map(function(c, i){
+      return '<div class="contact-card">' +
+        '<h3>' + escHtml(c.fullName || '(no name)') + '</h3>' +
+        (c.title || c.company ? '<div class="sub">' + escHtml([c.title,c.company].filter(Boolean).join(' at ')) + '</div>' : '') +
+        (c.industry ? '<span class="tag">' + escHtml(c.industry) + '</span>' : '') +
+        '<div class="row">' +
+          (c.phone ? '<a class="btn ghost small" href="tel:' + encodeURIComponent(c.phone) + '">Call</a>' : '') +
+          (c.email ? '<a class="btn ghost small" href="mailto:' + c.email + '">Email</a>' : '') +
+          '<button class="btn green small" data-add="' + idxOf(c) + '">Add to contacts</button>' +
+          '<button class="btn small" data-book="' + idxOf(c) + '">Booking link</button>' +
+          '<button class="btn ghost small" data-del="' + idxOf(c) + '">Delete</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    list.querySelectorAll('[data-add]').forEach(function(b){
+      b.addEventListener('click', function(){ downloadVCard(contacts[+b.dataset.add]); });
+    });
+    list.querySelectorAll('[data-book]').forEach(function(b){
+      b.addEventListener('click', function(){ sendBooking(contacts[+b.dataset.book]); });
+    });
+    list.querySelectorAll('[data-del]').forEach(function(b){
+      b.addEventListener('click', function(){
+        if (!confirm('Delete this contact?')) return;
+        contacts.splice(+b.dataset.del, 1);
+        save(CKEY, contacts);
+        renderDirectory();
+      });
+    });
+  }
+  function idxOf(c){ return contacts.indexOf(c); }
+  function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // ---------- export directory as standalone HTML ----------
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    if (!contacts.length) { alert('No contacts to save yet.'); return; }
+    var html = buildExportHtml(contacts, group);
+    var blob = new Blob([html], { type:'text/html' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'my-contacts' + (group ? ('-' + group.replace(/[^\w]+/g,'_')) : '') + '.html';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 1500);
+  });
+
+  function buildExportHtml(data, grp){
+    var json = JSON.stringify(data).replace(/</g,'\\u003c');
+    return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
+      '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+      '<title>My Contacts</title><style>' +
+      'body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#0f1115;color:#e8eaed}' +
+      'main{max-width:620px;margin:0 auto;padding:16px}h1{font-size:18px}' +
+      'input,select{width:100%;padding:11px;border-radius:10px;border:1px solid #2a2f3a;background:#10131a;color:#e8eaed;font-size:15px;margin-bottom:8px}' +
+      '.c{background:#1a1d24;border:1px solid #2a2f3a;border-radius:14px;padding:14px;margin-bottom:12px}' +
+      '.c h3{margin:0 0 2px;font-size:16px}.sub{color:#9aa3b2;font-size:13px}' +
+      '.tag{display:inline-block;background:#17233b;color:#9cc2ff;border:1px solid #27406b;font-size:11px;padding:3px 8px;border-radius:999px;margin-top:6px}' +
+      '.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}' +
+      'a.b,button.b{display:inline-block;padding:9px 12px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;border:1px solid #2a2f3a;background:transparent;color:#e8eaed;cursor:pointer}' +
+      'button.g{background:#22c55e;color:#fff;border:none}' +
+      '</style></head><body><main><h1>My Contacts' + (grp ? (' &middot; ' + escHtml(grp)) : '') + '</h1>' +
+      '<input id="s" placeholder="Search..."><select id="f"></select><div id="list"></div>' +
+      '<script>' +
+      'var DATA=' + json + ';' +
+      'function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");}' +
+      'function vcard(c){function e(s){return String(s||"").replace(/\\\\/g,"\\\\\\\\").replace(/;/g,"\\\\;").replace(/,/g,"\\\\,");}' +
+      'var L=["BEGIN:VCARD","VERSION:3.0","N:"+e(c.lastName)+";"+e(c.firstName)+";;;","FN:"+e(c.fullName||"")];' +
+      'if(c.company)L.push("ORG:"+e(c.company));if(c.title)L.push("TITLE:"+e(c.title));' +
+      'if(c.phone)L.push("TEL;TYPE=CELL:"+e(c.phone));if(c.email)L.push("EMAIL:"+e(c.email));' +
+      'if(c.website)L.push("URL:"+e(c.website));if(c.industry)L.push("CATEGORIES:"+e(c.industry));' +
+      'L.push("END:VCARD");return L.join("\\r\\n");}' +
+      'function dl(c){var b=new Blob([vcard(c)],{type:"text/vcard"});var u=URL.createObjectURL(b);' +
+      'var a=document.createElement("a");a.href=u;a.download=(c.fullName||"contact").replace(/[^a-zA-Z0-9]+/g,"_")+".vcf";' +
+      'document.body.appendChild(a);a.click();a.remove();}' +
+      'var f=document.getElementById("f"),s=document.getElementById("s"),list=document.getElementById("list");' +
+      'var inds={};DATA.forEach(function(c){if(c.industry)inds[c.industry]=1;});' +
+      'f.innerHTML="<option value=\\"\\">All industries</option>"+Object.keys(inds).sort().map(function(i){return "<option>"+i+"</option>";}).join("");' +
+      'function render(){var q=s.value.toLowerCase(),ind=f.value;' +
+      'var rows=DATA.filter(function(c){if(ind&&c.industry!==ind)return false;if(!q)return true;' +
+      'return [c.fullName,c.company,c.email,c.title,c.industry].join(" ").toLowerCase().indexOf(q)>-1;});' +
+      'list.innerHTML=rows.map(function(c,i){return "<div class=\\"c\\"><h3>"+esc(c.fullName||"(no name)")+"</h3>"+' +
+      '((c.title||c.company)?"<div class=\\"sub\\">"+esc([c.title,c.company].filter(Boolean).join(" at "))+"</div>":"")+' +
+      '(c.industry?"<span class=\\"tag\\">"+esc(c.industry)+"</span>":"")+"<div class=\\"row\\">"+' +
+      '(c.phone?"<a class=\\"b\\" href=\\"tel:"+c.phone+"\\">Call</a>":"")+' +
+      '(c.email?"<a class=\\"b\\" href=\\"mailto:"+c.email+"\\">Email</a>":"")+' +
+      '"<button class=\\"b g\\" onclick=\\"dl(DATA["+DATA.indexOf(c)+"])\\">Add to contacts</button>"+' +
+      '"</div></div>";}).join("")||"<p style=\\x27color:#9aa3b2\\x27>No matches.</p>";}' +
+      's.addEventListener("input",render);f.addEventListener("change",render);render();' +
+      '<\/script></main></body></html>';
+  }
+
+})();
+</script>
+</body>
+</html>
