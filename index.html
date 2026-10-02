@@ -36,6 +36,9 @@
   .contact-card .sub{color:var(--muted);font-size:13px;margin-bottom:4px}
   .tag{display:inline-block;background:#17233b;color:#9cc2ff;border:1px solid #27406b;
     font-size:11px;padding:3px 8px;border-radius:999px;margin-top:4px}
+  .details{font-size:13px;color:var(--text);margin-top:10px}
+  .details div{margin:3px 0}
+  .details span{display:inline-block;width:52px;color:var(--muted);font-size:11px;text-transform:uppercase}
   .row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
   .spinner{display:inline-block;width:18px;height:18px;border:2px solid #ffffff55;border-top-color:#fff;
     border-radius:50%;animation:spin .8s linear infinite}
@@ -192,6 +195,7 @@
     reviewArea.innerHTML =
       '<div class="contact-card">' +
         '<p class="hint" style="margin-top:0">Check the details, then save.</p>' +
+        field('Full name','f_fullName',c.fullName || ((c.firstName||'') + ' ' + (c.lastName||'')).trim()) +
         field('First name','f_firstName',c.firstName) +
         field('Last name','f_lastName',c.lastName) +
         field('Title','f_title',c.title) +
@@ -204,12 +208,16 @@
         '<button class="btn green" id="saveContact">Save to directory</button>' +
       '</div>';
     document.getElementById('saveContact').addEventListener('click', function(){
+      var fn = val('f_fullName');
+      var first = val('f_firstName');
+      var last = val('f_lastName');
+      if (!first && !last && fn) { var parts = fn.split(/\s+/); first = parts.shift() || ''; last = parts.join(' '); }
       var contact = {
-        firstName: val('f_firstName'), lastName: val('f_lastName'),
+        firstName: first, lastName: last,
         title: val('f_title'), company: val('f_company'),
         phone: val('f_phone'), email: val('f_email'),
         website: val('f_website'), industry: val('f_industry'),
-        fullName: (val('f_firstName') + ' ' + val('f_lastName')).trim(),
+        fullName: fn || (first + ' ' + last).trim(),
         savedAt: Date.now()
       };
       contacts.unshift(contact);
@@ -315,6 +323,11 @@
         '<h3>' + escHtml(c.fullName || '(no name)') + '</h3>' +
         (c.title || c.company ? '<div class="sub">' + escHtml([c.title,c.company].filter(Boolean).join(' at ')) + '</div>' : '') +
         (c.industry ? '<span class="tag">' + escHtml(c.industry) + '</span>' : '') +
+        '<div class="details">' +
+          (c.phone ? '<div><span>Phone</span> ' + escHtml(c.phone) + '</div>' : '') +
+          (c.email ? '<div><span>Email</span> ' + escHtml(c.email) + '</div>' : '') +
+          (c.website ? '<div><span>Web</span> ' + escHtml(c.website) + '</div>' : '') +
+        '</div>' +
         '<div class="row">' +
           (c.phone ? '<a class="btn ghost small" href="tel:' + encodeURIComponent(c.phone) + '">Call</a>' : '') +
           (c.email ? '<a class="btn ghost small" href="mailto:' + c.email + '">Email</a>' : '') +
