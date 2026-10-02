@@ -29,13 +29,16 @@
   .btn.small{width:auto;padding:9px 12px;font-size:14px;border-radius:10px}
   .hint{color:var(--muted);font-size:13px;margin:10px 2px}
   label{display:block;font-size:12px;color:var(--muted);margin:12px 2px 4px}
-  input[type=text],input[type=url],input[type=email]{width:100%;padding:12px;border-radius:10px;
+  input[type=text],input[type=url],input[type=email],select{width:100%;padding:12px;border-radius:10px;
     border:1px solid var(--line);background:#10131a;color:var(--text);font-size:15px}
   .contact-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
   .contact-card h3{margin:0 0 2px;font-size:16px}
   .contact-card .sub{color:var(--muted);font-size:13px;margin-bottom:4px}
+  .contact-card .tagline{font-style:italic;color:#c7cedb;font-size:13px;margin:4px 0}
+  .contact-card .meta{color:var(--muted);font-size:12px;margin-top:6px}
   .tag{display:inline-block;background:#17233b;color:#9cc2ff;border:1px solid #27406b;
-    font-size:11px;padding:3px 8px;border-radius:999px;margin-top:4px}
+    font-size:11px;padding:3px 8px;border-radius:999px;margin:4px 4px 0 0}
+  .tag.seek{background:#1d2616;color:#bfe39a;border-color:#3a5425}
   .details{font-size:13px;color:var(--text);margin-top:10px}
   .details div{margin:3px 0}
   .details span{display:inline-block;width:52px;color:var(--muted);font-size:11px;text-transform:uppercase}
@@ -43,14 +46,41 @@
   .spinner{display:inline-block;width:18px;height:18px;border:2px solid #ffffff55;border-top-color:#fff;
     border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
-  .filters{display:flex;gap:8px;margin-bottom:12px}
-  .filters input,.filters select{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);
-    background:#10131a;color:var(--text);font-size:14px}
   .empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:14px}
   .err{background:#2a1416;border:1px solid #5b2327;color:#ffb4b4;padding:10px 12px;border-radius:10px;
     font-size:13px;margin-top:12px;white-space:pre-wrap}
   .divider{height:1px;background:var(--line);margin:18px 0}
   a.link{color:#9cc2ff}
+  /* event banner */
+  .eventbar{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;
+    font-size:14px;cursor:pointer;margin-bottom:12px}
+  .eventbar strong{color:var(--text);font-weight:600}
+  .eventbar .caret{color:var(--muted);font-size:12px}
+  /* chips */
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0}
+  .chip{padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--card);
+    color:var(--text);font-size:13px;cursor:pointer;line-height:1}
+  .chip.active{border-color:var(--accent);background:#17233b;color:#cfe0ff}
+  .chip.seek.active{border-color:var(--accent2);background:#1d2616;color:#bfe39a}
+  /* search */
+  .searchbox{width:100%;margin-bottom:10px}
+  .filterlabel{font-size:11px;color:var(--muted);text-transform:uppercase;margin:6px 2px 0}
+  /* photo preview */
+  .preview img{max-width:100%;border-radius:12px;border:1px solid var(--line);display:block;margin:8px 0}
+  /* bottom sheet */
+  .sheet-backdrop{position:fixed;inset:0;background:#0009;display:none;z-index:40}
+  .sheet-backdrop.open{display:block}
+  .sheet{position:fixed;left:0;right:0;bottom:0;background:var(--card);border-top:1px solid var(--line);
+    border-radius:16px 16px 0 0;padding:16px;z-index:41;transform:translateY(110%);transition:transform .2s ease;
+    max-height:82vh;overflow:auto;padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+  .sheet.open{transform:translateY(0)}
+  .sheet h3{margin:2px 0 10px;font-size:16px}
+  .sheet .grips{width:40px;height:4px;border-radius:999px;background:var(--line);margin:0 auto 12px}
+  /* settings groups list */
+  .grouprow{display:flex;align-items:center;gap:8px;background:#10131a;border:1px solid var(--line);
+    border-radius:10px;padding:8px 10px;margin-top:8px;font-size:14px}
+  .grouprow button{margin-left:auto;background:transparent;border:none;color:var(--danger);font-size:18px;
+    cursor:pointer;line-height:1;padding:0 4px}
 </style>
 </head>
 <body>
@@ -68,6 +98,7 @@
 
   <!-- SCAN VIEW -->
   <section class="view active" id="view-scan">
+    <div class="eventbar" id="eventBar">Scanning at: <strong id="eventLabel">[none set]</strong> <span class="caret">— tap to set</span></div>
     <button class="btn" id="scanBtn">Scan a card</button>
     <input type="file" id="fileInput" accept="image/*" capture="environment" style="display:none">
     <p class="hint">Take a photo of the business card. The photo is read and then discarded. Nothing is stored on a server.</p>
@@ -77,10 +108,9 @@
 
   <!-- DIRECTORY VIEW -->
   <section class="view" id="view-directory">
-    <div class="filters">
-      <input type="text" id="search" placeholder="Search name, company, email...">
-      <select id="industryFilter"><option value="">All industries</option></select>
-    </div>
+    <input type="text" id="search" class="searchbox" placeholder="Search name, company, services, keywords...">
+    <div id="catChips" class="chips"></div>
+    <div id="locChips" class="chips"></div>
     <div id="directoryList"></div>
     <div class="divider"></div>
     <button class="btn ghost" id="exportBtn">Save my directory (HTML file)</button>
@@ -93,21 +123,46 @@
     <input type="text" id="setName" placeholder="Jane Smith">
     <label>Your scheduling link (Calendly or any booking URL)</label>
     <input type="url" id="setLink" placeholder="https://calendly.com/yourname/30min">
+    <label>My networking groups</label>
+    <div class="row">
+      <input type="text" id="groupInput" placeholder="e.g. BNI Besure" style="flex:1">
+      <button class="btn small" id="addGroup">Add</button>
+    </div>
+    <div id="groupList"></div>
     <div style="margin-top:16px"></div>
     <button class="btn green" id="saveSettings">Save settings</button>
-    <p class="hint">The booking button emails this link to the contact you just met.</p>
+    <p class="hint">The booking button emails this link to the contact you just met. Your groups fill the "Recurring group" picker when you set an event.</p>
   </section>
 </main>
+
+<!-- bottom sheet (reused for event picker and "looking for") -->
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<div class="sheet" id="sheet"><div class="grips"></div><div id="sheetBody"></div></div>
 
 <script>
 (function(){
   "use strict";
 
+  // ---------- fixed category list (shared by review, filters, "looking for") ----------
+  var MAIN_CATEGORIES = [
+    'Marketing & Advertising','Real Estate','Legal','Financial & Insurance','Health & Wellness',
+    'Home Services','Construction & Trades','Technology & IT','Professional Services','Food & Hospitality',
+    'Retail','Automotive','Education','Nonprofit & Community','Personal Services',
+    'Manufacturing & Distribution','Other'
+  ];
+  var EVENT_TYPES = ['Recurring group','Public event','Conference/expo','One-on-one','Other'];
+  var NAMED_TYPES = ['Public event','Conference/expo','Other']; // types that take a typed, remembered name
+
   // ---------- storage ----------
   var SKEY = 'cardscanner_settings';
   var CKEY = 'cardscanner_contacts';
-  var settings = load(SKEY, {name:'', bookingLink:''});
+  var ENKEY = 'cardscanner_eventnames';
+  var EVTKEY = 'cardscanner_event';
+  var settings = load(SKEY, {name:'', bookingLink:'', groups:[]});
+  if (!Array.isArray(settings.groups)) settings.groups = [];
   var contacts = load(CKEY, []);
+  var eventNames = load(ENKEY, []);
+  var currentEvent = sload(EVTKEY, null); // {type, name}
 
   function load(k, fallback){
     try { var v = localStorage.getItem(k); return v ? JSON.parse(v) : fallback; }
@@ -115,6 +170,30 @@
   }
   function save(k, v){
     try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){}
+  }
+  function sload(k, fallback){
+    try { var v = sessionStorage.getItem(k); return v ? JSON.parse(v) : fallback; }
+    catch(e){ return fallback; }
+  }
+  function ssave(k, v){
+    try { sessionStorage.setItem(k, JSON.stringify(v)); } catch(e){}
+  }
+
+  // ---------- small helpers ----------
+  function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function attr(s){ return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+  function val(id){ var el = document.getElementById(id); return el ? el.value.trim() : ''; }
+  function todayISO(){
+    var d = new Date(), m = d.getMonth()+1, day = d.getDate();
+    return d.getFullYear() + '-' + (m<10?'0':'') + m + '-' + (day<10?'0':'') + day;
+  }
+  function cat(c){ return c.mainCategory || c.industry || ''; } // industry = legacy fallback
+  function eventLabel(ev){ return (ev && ev.type) ? (ev.name || ev.type) : '[none set]'; }
+  function haystack(c){
+    return [c.fullName,c.firstName,c.lastName,c.company,c.title,c.email,c.phone,c.website,
+      cat(c),c.subCategory,c.tagline,c.services,c.city,c.state,c.county,
+      (c.lookingFor||[]).join(' '),c.rawText]
+      .join(' ').toLowerCase();
   }
 
   // ---------- group from URL ----------
@@ -124,19 +203,59 @@
 
   // ---------- nav ----------
   var navBtns = document.querySelectorAll('nav button');
+  function showView(name){
+    navBtns.forEach(function(x){ x.classList.toggle('active', x.dataset.view === name); });
+    document.querySelectorAll('.view').forEach(function(v){ v.classList.remove('active'); });
+    document.getElementById('view-' + name).classList.add('active');
+    if (name === 'directory') renderDirectory();
+  }
   navBtns.forEach(function(b){
-    b.addEventListener('click', function(){
-      navBtns.forEach(function(x){x.classList.remove('active');});
-      b.classList.add('active');
-      document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});
-      document.getElementById('view-' + b.dataset.view).classList.add('active');
-      if (b.dataset.view === 'directory') renderDirectory();
-    });
+    b.addEventListener('click', function(){ showView(b.dataset.view); });
   });
+
+  // ---------- bottom sheet ----------
+  var sheet = document.getElementById('sheet');
+  var sheetBackdrop = document.getElementById('sheetBackdrop');
+  var sheetBody = document.getElementById('sheetBody');
+  function openSheet(title, html){
+    sheetBody.innerHTML = '<h3>' + escHtml(title) + '</h3>' + html;
+    sheetBackdrop.classList.add('open');
+    sheet.classList.add('open');
+  }
+  function closeSheet(){
+    sheet.classList.remove('open');
+    sheetBackdrop.classList.remove('open');
+  }
+  sheetBackdrop.addEventListener('click', closeSheet);
 
   // ---------- settings ----------
   document.getElementById('setName').value = settings.name || '';
   document.getElementById('setLink').value = settings.bookingLink || '';
+  renderGroups();
+
+  function renderGroups(){
+    var box = document.getElementById('groupList');
+    if (!settings.groups.length) { box.innerHTML = '<p class="hint" style="margin-left:0">No groups yet.</p>'; return; }
+    box.innerHTML = settings.groups.map(function(g, i){
+      return '<div class="grouprow"><span>' + escHtml(g) + '</span><button data-del-group="' + i + '" aria-label="Remove">&times;</button></div>';
+    }).join('');
+    box.querySelectorAll('[data-del-group]').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        settings.groups.splice(+btn.dataset.delGroup, 1);
+        save(SKEY, settings);
+        renderGroups();
+      });
+    });
+  }
+  document.getElementById('addGroup').addEventListener('click', function(){
+    var gi = document.getElementById('groupInput');
+    var name = gi.value.trim();
+    if (!name) return;
+    if (settings.groups.indexOf(name) === -1) settings.groups.unshift(name);
+    save(SKEY, settings);
+    gi.value = '';
+    renderGroups();
+  });
   document.getElementById('saveSettings').addEventListener('click', function(){
     settings.name = document.getElementById('setName').value.trim();
     settings.bookingLink = document.getElementById('setLink').value.trim();
@@ -144,40 +263,188 @@
     alert('Saved.');
   });
 
-  // ---------- scan ----------
+  // ---------- event context ----------
+  updateEventBar();
+  document.getElementById('eventBar').addEventListener('click', function(){
+    openEventPicker(function(ev){
+      currentEvent = ev;
+      ssave(EVTKEY, currentEvent);
+      updateEventBar();
+      closeSheet();
+    });
+  });
+  function updateEventBar(){
+    document.getElementById('eventLabel').textContent = eventLabel(currentEvent);
+  }
+
+  // Event picker rendered into the bottom sheet. Calls onPick({type,name}).
+  function openEventPicker(onPick){
+    openSheet('Where are you scanning?', '<div id="evStep"></div>');
+    renderTypeStep();
+
+    function renderTypeStep(){
+      var html = '<div class="chips">' + EVENT_TYPES.map(function(t){
+        return '<button class="chip" data-type="' + attr(t) + '">' + escHtml(t) + '</button>';
+      }).join('') + '</div>';
+      var step = document.getElementById('evStep');
+      step.innerHTML = html;
+      step.querySelectorAll('[data-type]').forEach(function(btn){
+        btn.addEventListener('click', function(){ pickType(btn.dataset.type); });
+      });
+    }
+
+    function pickType(type){
+      if (type === 'Recurring group') { renderGroupStep(); return; }
+      if (type === 'One-on-one') { onPick({type:type, name:''}); return; }
+      if (NAMED_TYPES.indexOf(type) !== -1) { renderNameStep(type); return; }
+      onPick({type:type, name:''});
+    }
+
+    function renderGroupStep(){
+      var step = document.getElementById('evStep');
+      var chips = settings.groups.length
+        ? '<div class="chips">' + settings.groups.map(function(g){
+            return '<button class="chip" data-group="' + attr(g) + '">' + escHtml(g) + '</button>';
+          }).join('') + '</div>'
+        : '<p class="hint" style="margin-left:0">No groups saved yet. Add them under Settings → My networking groups.</p>';
+      step.innerHTML = chips + '<div class="row"><button class="btn ghost small" id="evBack">Back</button></div>';
+      step.querySelectorAll('[data-group]').forEach(function(btn){
+        btn.addEventListener('click', function(){ onPick({type:'Recurring group', name:btn.dataset.group}); });
+      });
+      document.getElementById('evBack').addEventListener('click', renderTypeStep);
+    }
+
+    function renderNameStep(type){
+      var step = document.getElementById('evStep');
+      var remembered = eventNames.length
+        ? '<div class="filterlabel">Recent</div><div class="chips" id="evRemembered">' + eventNames.map(function(n){
+            return '<button class="chip" data-name="' + attr(n) + '">' + escHtml(n) + '</button>';
+          }).join('') + '</div>'
+        : '';
+      step.innerHTML =
+        '<label>Name this ' + escHtml(type.toLowerCase()) + '</label>' +
+        '<input type="text" id="evName" placeholder="e.g. Chamber Mixer">' +
+        '<div class="row"><button class="btn green small" id="evUse">Use this</button>' +
+        '<button class="btn ghost small" id="evBack">Back</button></div>' +
+        remembered;
+      document.getElementById('evUse').addEventListener('click', function(){
+        var name = val('evName');
+        if (!name) { onPick({type:type, name:''}); return; }
+        rememberName(name);
+        onPick({type:type, name:name});
+      });
+      document.getElementById('evBack').addEventListener('click', renderTypeStep);
+      step.querySelectorAll('[data-name]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          rememberName(btn.dataset.name);
+          onPick({type:type, name:btn.dataset.name});
+        });
+      });
+    }
+  }
+
+  function rememberName(name){
+    if (!name) return;
+    var i = eventNames.indexOf(name);
+    if (i !== -1) eventNames.splice(i, 1);
+    eventNames.unshift(name);
+    eventNames = eventNames.slice(0, 20);
+    save(ENKEY, eventNames);
+  }
+
+  // ---------- scan: front, optional back, then review ----------
   var scanBtn = document.getElementById('scanBtn');
   var fileInput = document.getElementById('fileInput');
   var scanStatus = document.getElementById('scanStatus');
   var reviewArea = document.getElementById('reviewArea');
 
-  scanBtn.addEventListener('click', function(){ fileInput.click(); });
+  var captureStage = 'front';     // 'front' | 'back'
+  var pendingImages = [];         // [{base64, mediaType}, ...]
+
+  scanBtn.addEventListener('click', function(){
+    pendingImages = [];
+    captureStage = 'front';
+    reviewArea.innerHTML = '';
+    scanStatus.innerHTML = '';
+    triggerCapture();
+  });
+
+  function triggerCapture(){
+    fileInput.value = '';
+    fileInput.click();
+  }
 
   fileInput.addEventListener('change', function(){
     var file = fileInput.files && fileInput.files[0];
     if (!file) return;
+    scanStatus.innerHTML = '<button class="btn" disabled><span class="spinner"></span> Processing photo...</button>';
+    fileToResizedJpeg(file, 1400, 0.72).then(function(img){
+      scanStatus.innerHTML = '';
+      showPhotoPreview(img);
+    }).catch(function(){
+      scanStatus.innerHTML = '';
+      showError('Could not read that photo', 'Please try taking it again.');
+    });
+  });
+
+  function showPhotoPreview(img){
+    var which = captureStage === 'front' ? 'front' : 'back';
+    reviewArea.innerHTML =
+      '<div class="contact-card preview">' +
+        '<p class="hint" style="margin-top:0">Preview of the ' + which + ' of the card.</p>' +
+        '<img src="data:' + img.mediaType + ';base64,' + img.base64 + '" alt="card ' + which + '">' +
+        '<div class="row">' +
+          '<button class="btn green small" id="usePhoto">Use photo</button>' +
+          '<button class="btn ghost small" id="retake">Retake</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('usePhoto').addEventListener('click', function(){ onUsePhoto(img); });
+    document.getElementById('retake').addEventListener('click', function(){ triggerCapture(); });
+  }
+
+  function onUsePhoto(img){
+    pendingImages.push({ base64: img.base64, mediaType: img.mediaType });
+    if (captureStage === 'front') {
+      askBack();
+    } else {
+      doScan();
+    }
+  }
+
+  function askBack(){
+    reviewArea.innerHTML =
+      '<div class="contact-card">' +
+        '<p class="hint" style="margin-top:0">Add the back of the card?</p>' +
+        '<div class="row">' +
+          '<button class="btn green small" id="backYes">Yes, add back</button>' +
+          '<button class="btn small" id="backNo">No, read front only</button>' +
+        '</div>' +
+      '</div>';
+    document.getElementById('backYes').addEventListener('click', function(){
+      captureStage = 'back';
+      triggerCapture();
+    });
+    document.getElementById('backNo').addEventListener('click', function(){ doScan(); });
+  }
+
+  function doScan(){
     reviewArea.innerHTML = '';
     scanStatus.innerHTML = '<button class="btn" disabled><span class="spinner"></span> Reading card...</button>';
-    fileToResizedJpeg(file, 1400, 0.72).then(function(img){
-      return fetch('/api/scan', {
-        method:'POST',
-        headers:{'content-type':'application/json'},
-        body: JSON.stringify({ image: img.base64, mediaType: img.mediaType })
-      });
+    var payload = pendingImages.map(function(im){ return { data: im.base64, mediaType: im.mediaType }; });
+    fetch('/api/scan', {
+      method:'POST',
+      headers:{'content-type':'application/json'},
+      body: JSON.stringify({ images: payload })
     }).then(function(r){ return r.json().then(function(j){ return {ok:r.ok, j:j}; }); })
       .then(function(res){
         scanStatus.innerHTML = '';
-        fileInput.value = '';
-        if (!res.ok) {
-          showError(res.j.error, res.j.detail || res.j.raw);
-          return;
-        }
+        if (!res.ok) { showError(res.j.error, res.j.detail || res.j.raw); return; }
         showReview(res.j);
       }).catch(function(err){
         scanStatus.innerHTML = '';
-        fileInput.value = '';
         showError('Something went wrong', String(err));
       });
-  });
+  }
 
   function showError(msg, detail){
     var d = document.createElement('div');
@@ -186,52 +453,85 @@
     reviewArea.appendChild(d);
   }
 
+  // ---------- review form ----------
   function field(labelText, id, value){
-    return '<label>' + labelText + '</label><input type="text" id="' + id + '" value="' +
-      String(value || '').replace(/"/g,'&quot;') + '">';
+    return '<label>' + labelText + '</label><input type="text" id="' + id + '" value="' + attr(value) + '">';
+  }
+  function selectField(labelText, id, options, value){
+    var opts = options.slice();
+    if (value && opts.indexOf(value) === -1) opts.unshift(value); // keep an unexpected value selectable
+    var html = '<label>' + labelText + '</label><select id="' + id + '">' +
+      '<option value=""></option>' +
+      opts.map(function(o){
+        return '<option value="' + attr(o) + '"' + (o === value ? ' selected' : '') + '>' + escHtml(o) + '</option>';
+      }).join('') + '</select>';
+    return html;
   }
 
   function showReview(c){
-    reviewArea.innerHTML =
-      '<div class="contact-card">' +
-        '<p class="hint" style="margin-top:0">Check the details, then save.</p>' +
-        field('Full name','f_fullName',c.fullName || ((c.firstName||'') + ' ' + (c.lastName||'')).trim()) +
-        field('First name','f_firstName',c.firstName) +
-        field('Last name','f_lastName',c.lastName) +
-        field('Title','f_title',c.title) +
-        field('Company','f_company',c.company) +
-        field('Phone','f_phone',c.phone) +
-        field('Email','f_email',c.email) +
-        field('Website','f_website',c.website) +
-        field('Industry','f_industry',c.industry) +
-        '<div style="margin-top:16px"></div>' +
-        '<button class="btn green" id="saveContact">Save to directory</button>' +
-      '</div>';
-    document.getElementById('saveContact').addEventListener('click', function(){
+    var reviewEvent = currentEvent ? {type:currentEvent.type, name:currentEvent.name} : null;
+
+    function eventRow(){
+      return '<div class="eventbar" id="reviewEventBar" style="margin-top:0">Event: <strong>' +
+        escHtml(eventLabel(reviewEvent)) + '</strong> <span class="caret">— tap to change</span></div>';
+    }
+
+    function paint(){
+      reviewArea.innerHTML =
+        '<div class="contact-card">' +
+          '<p class="hint" style="margin-top:0">Check the details, then save.</p>' +
+          eventRow() +
+          field('Full name','f_fullName',c.fullName || ((c.firstName||'') + ' ' + (c.lastName||'')).trim()) +
+          field('First name','f_firstName',c.firstName) +
+          field('Last name','f_lastName',c.lastName) +
+          field('Title','f_title',c.title) +
+          field('Company','f_company',c.company) +
+          field('Phone','f_phone',c.phone) +
+          field('Email','f_email',c.email) +
+          field('Website','f_website',c.website) +
+          selectField('Main category','f_mainCategory',MAIN_CATEGORIES, cat(c)) +
+          field('Subcategory','f_subCategory',c.subCategory) +
+          field('Tagline','f_tagline',c.tagline) +
+          field('Services','f_services',c.services) +
+          field('City','f_city',c.city) +
+          field('State','f_state',c.state) +
+          field('County','f_county',c.county) +
+          '<div style="margin-top:16px"></div>' +
+          '<button class="btn green" id="saveContact">Save to directory</button>' +
+        '</div>';
+      document.getElementById('reviewEventBar').addEventListener('click', function(){
+        openEventPicker(function(ev){ reviewEvent = ev; closeSheet(); paint(); });
+      });
+      document.getElementById('saveContact').addEventListener('click', doSave);
+    }
+
+    function doSave(){
       var fn = val('f_fullName');
       var first = val('f_firstName');
       var last = val('f_lastName');
       if (!first && !last && fn) { var parts = fn.split(/\s+/); first = parts.shift() || ''; last = parts.join(' '); }
       var contact = {
         firstName: first, lastName: last,
-        title: val('f_title'), company: val('f_company'),
-        phone: val('f_phone'), email: val('f_email'),
-        website: val('f_website'), industry: val('f_industry'),
         fullName: fn || (first + ' ' + last).trim(),
+        title: val('f_title'), company: val('f_company'),
+        phone: val('f_phone'), email: val('f_email'), website: val('f_website'),
+        mainCategory: val('f_mainCategory'), subCategory: val('f_subCategory'),
+        tagline: val('f_tagline'), services: val('f_services'),
+        city: val('f_city'), state: val('f_state'), county: val('f_county'),
+        rawText: c.rawText || '',
+        lookingFor: [],
+        event: reviewEvent ? {type:reviewEvent.type, name:reviewEvent.name} : null,
+        eventDate: todayISO(),
         savedAt: Date.now()
       };
       contacts.unshift(contact);
       save(CKEY, contacts);
-      reviewArea.innerHTML = '<div class="contact-card">Saved. ' +
-        '<div class="row">' +
-        '<button class="btn green small" id="postAdd">Add to phone contacts</button>' +
-        '<button class="btn small" id="postBook">Email booking link</button>' +
-        '</div></div>';
-      document.getElementById('postAdd').addEventListener('click', function(){ downloadVCard(contact); });
-      document.getElementById('postBook').addEventListener('click', function(){ sendBooking(contact); });
-    });
+      reviewArea.innerHTML = '';
+      showView('directory'); // new contact is on top
+    }
+
+    paint();
   }
-  function val(id){ return document.getElementById(id).value.trim(); }
 
   // ---------- image resize ----------
   function fileToResizedJpeg(file, maxDim, quality){
@@ -265,7 +565,15 @@
     if (c.phone) lines.push('TEL;TYPE=CELL:' + esc(c.phone));
     if (c.email) lines.push('EMAIL;TYPE=INTERNET:' + esc(c.email));
     if (c.website) lines.push('URL:' + esc(c.website));
-    if (c.industry) lines.push('CATEGORIES:' + esc(c.industry));
+    if (c.city || c.state) lines.push('ADR;TYPE=WORK:;;;' + esc(c.city) + ';' + esc(c.state) + ';;');
+    var cats = [cat(c), c.subCategory].filter(Boolean).join(', ');
+    if (cats) lines.push('CATEGORIES:' + esc(cats));
+    var noteParts = [];
+    if (c.tagline) noteParts.push(c.tagline);
+    if (c.services) noteParts.push('Services: ' + c.services);
+    if (c.county) noteParts.push('County: ' + c.county);
+    if (c.lookingFor && c.lookingFor.length) noteParts.push('Looking for: ' + c.lookingFor.join(', '));
+    if (noteParts.length) lines.push('NOTE:' + esc(noteParts.join('\n')));
     lines.push('END:VCARD');
     return lines.join('\r\n');
   }
@@ -290,50 +598,73 @@
 
   // ---------- directory ----------
   var search = document.getElementById('search');
-  var industryFilter = document.getElementById('industryFilter');
+  var catChips = document.getElementById('catChips');
+  var locChips = document.getElementById('locChips');
+  var activeCat = '';
+  var activeLoc = '';
   search.addEventListener('input', renderDirectory);
-  industryFilter.addEventListener('change', renderDirectory);
 
   function renderDirectory(){
     var list = document.getElementById('directoryList');
-    // refresh industry options
-    var inds = {};
-    contacts.forEach(function(c){ if (c.industry) inds[c.industry] = true; });
-    var current = industryFilter.value;
-    industryFilter.innerHTML = '<option value="">All industries</option>' +
-      Object.keys(inds).sort().map(function(i){
-        return '<option value="' + i.replace(/"/g,'&quot;') + '">' + i + '</option>';
-      }).join('');
-    industryFilter.value = current;
+
+    // categories & locations present in the directory
+    var catsPresent = {}, locsPresent = {};
+    contacts.forEach(function(c){
+      var cc = cat(c); if (cc) catsPresent[cc] = true;
+      if (c.city) locsPresent[c.city] = true;
+      if (c.county) locsPresent[c.county] = true;
+    });
+    if (activeCat && !catsPresent[activeCat]) activeCat = '';
+    if (activeLoc && !locsPresent[activeLoc]) activeLoc = '';
+
+    renderFilterChips(catChips, Object.keys(catsPresent).sort(), activeCat, 'cat');
+    renderFilterChips(locChips, Object.keys(locsPresent).sort(), activeLoc, 'loc');
 
     var q = search.value.trim().toLowerCase();
-    var ind = industryFilter.value;
     var rows = contacts.filter(function(c){
-      if (ind && c.industry !== ind) return false;
+      if (activeCat && cat(c) !== activeCat) return false;
+      if (activeLoc && c.city !== activeLoc && c.county !== activeLoc) return false;
       if (!q) return true;
-      return [c.fullName,c.company,c.email,c.title,c.industry].join(' ').toLowerCase().indexOf(q) !== -1;
+      return haystack(c).indexOf(q) !== -1;
     });
 
     if (!rows.length) {
-      list.innerHTML = '<div class="empty">No contacts yet. Scan a card to get started.</div>';
+      list.innerHTML = '<div class="empty">' +
+        (contacts.length ? 'No matches.' : 'No contacts yet. Scan a card to get started.') + '</div>';
       return;
     }
-    list.innerHTML = rows.map(function(c, i){
+
+    list.innerHTML = rows.map(function(c){
+      var i = contacts.indexOf(c);
+      var ccat = cat(c);
+      var catLine = ccat ? (escHtml(ccat) + (c.subCategory ? ' › ' + escHtml(c.subCategory) : '')) : '';
+      var loc = [c.city, c.county].filter(Boolean).join(', ');
+      var when = c.eventDate || (c.savedAt ? new Date(c.savedAt).toISOString().slice(0,10) : '');
+      var metaBits = [];
+      if (when) metaBits.push('Added ' + escHtml(when));
+      if (c.event && c.event.type) metaBits.push(escHtml(eventLabel(c.event)));
       return '<div class="contact-card">' +
         '<h3>' + escHtml(c.fullName || '(no name)') + '</h3>' +
         (c.title || c.company ? '<div class="sub">' + escHtml([c.title,c.company].filter(Boolean).join(' at ')) + '</div>' : '') +
-        (c.industry ? '<span class="tag">' + escHtml(c.industry) + '</span>' : '') +
+        (c.tagline ? '<div class="tagline">“' + escHtml(c.tagline) + '”</div>' : '') +
+        (catLine ? '<span class="tag">' + catLine + '</span>' : '') +
+        (loc ? '<span class="tag">' + escHtml(loc) + '</span>' : '') +
+        ((c.lookingFor && c.lookingFor.length)
+          ? '<div>' + c.lookingFor.map(function(s){ return '<span class="tag seek">Looking for: ' + escHtml(s) + '</span>'; }).join('') + '</div>'
+          : '') +
         '<div class="details">' +
           (c.phone ? '<div><span>Phone</span> ' + escHtml(c.phone) + '</div>' : '') +
           (c.email ? '<div><span>Email</span> ' + escHtml(c.email) + '</div>' : '') +
           (c.website ? '<div><span>Web</span> ' + escHtml(c.website) + '</div>' : '') +
         '</div>' +
+        (metaBits.length ? '<div class="meta">' + metaBits.join(' · ') + '</div>' : '') +
         '<div class="row">' +
           (c.phone ? '<a class="btn ghost small" href="tel:' + encodeURIComponent(c.phone) + '">Call</a>' : '') +
-          (c.email ? '<a class="btn ghost small" href="mailto:' + c.email + '">Email</a>' : '') +
-          '<button class="btn green small" data-add="' + idxOf(c) + '">Add to contacts</button>' +
-          '<button class="btn small" data-book="' + idxOf(c) + '">Booking link</button>' +
-          '<button class="btn ghost small" data-del="' + idxOf(c) + '">Delete</button>' +
+          (c.email ? '<a class="btn ghost small" href="mailto:' + attr(c.email) + '">Email</a>' : '') +
+          '<button class="btn small" data-look="' + i + '">Looking for</button>' +
+          '<button class="btn green small" data-add="' + i + '">Add to contacts</button>' +
+          '<button class="btn small" data-book="' + i + '">Booking link</button>' +
+          '<button class="btn ghost small" data-del="' + i + '">Delete</button>' +
         '</div>' +
       '</div>';
     }).join('');
@@ -344,6 +675,9 @@
     list.querySelectorAll('[data-book]').forEach(function(b){
       b.addEventListener('click', function(){ sendBooking(contacts[+b.dataset.book]); });
     });
+    list.querySelectorAll('[data-look]').forEach(function(b){
+      b.addEventListener('click', function(){ openLookingFor(+b.dataset.look); });
+    });
     list.querySelectorAll('[data-del]').forEach(function(b){
       b.addEventListener('click', function(){
         if (!confirm('Delete this contact?')) return;
@@ -353,8 +687,56 @@
       });
     });
   }
-  function idxOf(c){ return contacts.indexOf(c); }
-  function escHtml(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  function renderFilterChips(container, values, active, kind){
+    if (!values.length) { container.innerHTML = ''; return; }
+    container.innerHTML = values.map(function(v){
+      return '<button class="chip' + (v === active ? ' active' : '') + '" data-' + kind + '="' + attr(v) + '">' + escHtml(v) + '</button>';
+    }).join('');
+    container.querySelectorAll('[data-' + kind + ']').forEach(function(btn){
+      btn.addEventListener('click', function(){
+        var v = btn.getAttribute('data-' + kind);
+        if (kind === 'cat') activeCat = (activeCat === v) ? '' : v;
+        else activeLoc = (activeLoc === v) ? '' : v;
+        renderDirectory();
+      });
+    });
+  }
+
+  // "Looking for" multi-select on a contact
+  function openLookingFor(idx){
+    var c = contacts[idx];
+    if (!c) return;
+    var sel = (c.lookingFor || []).slice();
+    openSheet('What is ' + (c.firstName || 'this contact') + ' looking for?',
+      '<p class="hint" style="margin:0 0 4px">Tap the categories they want referrals in.</p>' +
+      '<div class="chips" id="lookChips"></div>' +
+      '<div class="row"><button class="btn green small" id="lookSave">Save</button>' +
+      '<button class="btn ghost small" id="lookCancel">Cancel</button></div>');
+
+    function paintChips(){
+      var box = document.getElementById('lookChips');
+      box.innerHTML = MAIN_CATEGORIES.map(function(m){
+        return '<button class="chip seek' + (sel.indexOf(m) !== -1 ? ' active' : '') + '" data-m="' + attr(m) + '">' + escHtml(m) + '</button>';
+      }).join('');
+      box.querySelectorAll('[data-m]').forEach(function(btn){
+        btn.addEventListener('click', function(){
+          var m = btn.getAttribute('data-m');
+          var i = sel.indexOf(m);
+          if (i === -1) sel.push(m); else sel.splice(i, 1);
+          paintChips();
+        });
+      });
+    }
+    paintChips();
+    document.getElementById('lookSave').addEventListener('click', function(){
+      c.lookingFor = sel;
+      save(CKEY, contacts);
+      closeSheet();
+      renderDirectory();
+    });
+    document.getElementById('lookCancel').addEventListener('click', closeSheet);
+  }
 
   // ---------- export directory as standalone HTML ----------
   document.getElementById('exportBtn').addEventListener('click', function(){
@@ -371,6 +753,54 @@
 
   function buildExportHtml(data, grp){
     var json = JSON.stringify(data).replace(/</g,'\\u003c');
+    var inner = [
+      'var DATA=' + json + ';',
+      'function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}',
+      'function catOf(c){return c.mainCategory||c.industry||"";}',
+      'function hay(c){return [c.fullName,c.firstName,c.lastName,c.company,c.title,c.email,c.phone,c.website,',
+      '  catOf(c),c.subCategory,c.tagline,c.services,c.city,c.state,c.county,((c.lookingFor||[]).join(" ")),c.rawText]',
+      '  .join(" ").toLowerCase();}',
+      'function vcard(c){function e(s){return String(s||"").replace(/\\\\/g,"\\\\\\\\").replace(/;/g,"\\\\;").replace(/,/g,"\\\\,");}',
+      '  var L=["BEGIN:VCARD","VERSION:3.0","N:"+e(c.lastName)+";"+e(c.firstName)+";;;","FN:"+e(c.fullName||"")];',
+      '  if(c.company)L.push("ORG:"+e(c.company));if(c.title)L.push("TITLE:"+e(c.title));',
+      '  if(c.phone)L.push("TEL;TYPE=CELL:"+e(c.phone));if(c.email)L.push("EMAIL;TYPE=INTERNET:"+e(c.email));',
+      '  if(c.website)L.push("URL:"+e(c.website));',
+      '  if(c.city||c.state)L.push("ADR;TYPE=WORK:;;;"+e(c.city)+";"+e(c.state)+";;");',
+      '  var cats=[catOf(c),c.subCategory].filter(Boolean).join(", ");if(cats)L.push("CATEGORIES:"+e(cats));',
+      '  L.push("END:VCARD");return L.join("\\r\\n");}',
+      'function dl(c){var b=new Blob([vcard(c)],{type:"text/vcard"});var u=URL.createObjectURL(b);',
+      '  var a=document.createElement("a");a.href=u;a.download=(c.fullName||"contact").replace(/[^a-zA-Z0-9]+/g,"_")+".vcf";',
+      '  document.body.appendChild(a);a.click();a.remove();}',
+      'var s=document.getElementById("s"),cf=document.getElementById("cf"),lf=document.getElementById("lf"),list=document.getElementById("list");',
+      'var cats={},locs={};DATA.forEach(function(c){var cc=catOf(c);if(cc)cats[cc]=1;if(c.city)locs[c.city]=1;if(c.county)locs[c.county]=1;});',
+      'cf.innerHTML="<option value=\\"\\">All categories</option>"+Object.keys(cats).sort().map(function(i){return "<option>"+esc(i)+"</option>";}).join("");',
+      'lf.innerHTML="<option value=\\"\\">All locations</option>"+Object.keys(locs).sort().map(function(i){return "<option>"+esc(i)+"</option>";}).join("");',
+      'function render(){var q=s.value.toLowerCase(),fc=cf.value,fl=lf.value;',
+      '  var rows=DATA.filter(function(c){if(fc&&catOf(c)!==fc)return false;',
+      '    if(fl&&c.city!==fl&&c.county!==fl)return false;if(!q)return true;return hay(c).indexOf(q)>-1;});',
+      '  list.innerHTML=rows.map(function(c){',
+      '    var catLine=catOf(c)?(esc(catOf(c))+(c.subCategory?" \\u203A "+esc(c.subCategory):"")):"";',
+      '    var loc=[c.city,c.county].filter(Boolean).join(", ");',
+      '    var when=c.eventDate||"";',
+      '    var seek=(c.lookingFor&&c.lookingFor.length)?("<div>"+c.lookingFor.map(function(x){return "<span class=\\"tag seek\\">Looking for: "+esc(x)+"</span>";}).join("")+"</div>"):"";',
+      '    return "<div class=\\"c\\"><h3>"+esc(c.fullName||"(no name)")+"</h3>"+',
+      '      ((c.title||c.company)?"<div class=\\"sub\\">"+esc([c.title,c.company].filter(Boolean).join(" at "))+"</div>":"")+',
+      '      (c.tagline?"<div class=\\"tagline\\">\\u201C"+esc(c.tagline)+"\\u201D</div>":"")+',
+      '      (catLine?"<span class=\\"tag\\">"+catLine+"</span>":"")+',
+      '      (loc?"<span class=\\"tag\\">"+esc(loc)+"</span>":"")+seek+',
+      '      "<div class=\\"details\\">"+',
+      '        (c.phone?"<div>"+esc(c.phone)+"</div>":"")+',
+      '        (c.email?"<div>"+esc(c.email)+"</div>":"")+',
+      '        (c.website?"<div>"+esc(c.website)+"</div>":"")+"</div>"+',
+      '      (when?"<div class=\\"meta\\">Added "+esc(when)+"</div>":"")+',
+      '      "<div class=\\"row\\">"+',
+      '      (c.phone?"<a class=\\"b\\" href=\\"tel:"+esc(c.phone)+"\\">Call</a>":"")+',
+      '      (c.email?"<a class=\\"b\\" href=\\"mailto:"+esc(c.email)+"\\">Email</a>":"")+',
+      '      "<button class=\\"b g\\" onclick=\\"dl(DATA["+DATA.indexOf(c)+"])\\">Add to contacts</button>"+',
+      '      "</div></div>";}).join("")||"<p style=\\x27color:#9aa3b2\\x27>No matches.</p>";}',
+      's.addEventListener("input",render);cf.addEventListener("change",render);lf.addEventListener("change",render);render();'
+    ].join('\n');
+
     return '<!doctype html><html lang="en"><head><meta charset="utf-8">' +
       '<meta name="viewport" content="width=device-width, initial-scale=1">' +
       '<title>My Contacts</title><style>' +
@@ -379,39 +809,17 @@
       'input,select{width:100%;padding:11px;border-radius:10px;border:1px solid #2a2f3a;background:#10131a;color:#e8eaed;font-size:15px;margin-bottom:8px}' +
       '.c{background:#1a1d24;border:1px solid #2a2f3a;border-radius:14px;padding:14px;margin-bottom:12px}' +
       '.c h3{margin:0 0 2px;font-size:16px}.sub{color:#9aa3b2;font-size:13px}' +
-      '.tag{display:inline-block;background:#17233b;color:#9cc2ff;border:1px solid #27406b;font-size:11px;padding:3px 8px;border-radius:999px;margin-top:6px}' +
+      '.tagline{font-style:italic;color:#c7cedb;font-size:13px;margin:4px 0}' +
+      '.details{font-size:13px;margin-top:8px}.details div{margin:3px 0}' +
+      '.meta{color:#9aa3b2;font-size:12px;margin-top:6px}' +
+      '.tag{display:inline-block;background:#17233b;color:#9cc2ff;border:1px solid #27406b;font-size:11px;padding:3px 8px;border-radius:999px;margin:4px 4px 0 0}' +
+      '.tag.seek{background:#1d2616;color:#bfe39a;border-color:#3a5425}' +
       '.row{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}' +
       'a.b,button.b{display:inline-block;padding:9px 12px;border-radius:10px;font-size:14px;font-weight:600;text-decoration:none;border:1px solid #2a2f3a;background:transparent;color:#e8eaed;cursor:pointer}' +
       'button.g{background:#22c55e;color:#fff;border:none}' +
       '</style></head><body><main><h1>My Contacts' + (grp ? (' &middot; ' + escHtml(grp)) : '') + '</h1>' +
-      '<input id="s" placeholder="Search..."><select id="f"></select><div id="list"></div>' +
-      '<script>' +
-      'var DATA=' + json + ';' +
-      'function esc(s){return String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");}' +
-      'function vcard(c){function e(s){return String(s||"").replace(/\\\\/g,"\\\\\\\\").replace(/;/g,"\\\\;").replace(/,/g,"\\\\,");}' +
-      'var L=["BEGIN:VCARD","VERSION:3.0","N:"+e(c.lastName)+";"+e(c.firstName)+";;;","FN:"+e(c.fullName||"")];' +
-      'if(c.company)L.push("ORG:"+e(c.company));if(c.title)L.push("TITLE:"+e(c.title));' +
-      'if(c.phone)L.push("TEL;TYPE=CELL:"+e(c.phone));if(c.email)L.push("EMAIL:"+e(c.email));' +
-      'if(c.website)L.push("URL:"+e(c.website));if(c.industry)L.push("CATEGORIES:"+e(c.industry));' +
-      'L.push("END:VCARD");return L.join("\\r\\n");}' +
-      'function dl(c){var b=new Blob([vcard(c)],{type:"text/vcard"});var u=URL.createObjectURL(b);' +
-      'var a=document.createElement("a");a.href=u;a.download=(c.fullName||"contact").replace(/[^a-zA-Z0-9]+/g,"_")+".vcf";' +
-      'document.body.appendChild(a);a.click();a.remove();}' +
-      'var f=document.getElementById("f"),s=document.getElementById("s"),list=document.getElementById("list");' +
-      'var inds={};DATA.forEach(function(c){if(c.industry)inds[c.industry]=1;});' +
-      'f.innerHTML="<option value=\\"\\">All industries</option>"+Object.keys(inds).sort().map(function(i){return "<option>"+i+"</option>";}).join("");' +
-      'function render(){var q=s.value.toLowerCase(),ind=f.value;' +
-      'var rows=DATA.filter(function(c){if(ind&&c.industry!==ind)return false;if(!q)return true;' +
-      'return [c.fullName,c.company,c.email,c.title,c.industry].join(" ").toLowerCase().indexOf(q)>-1;});' +
-      'list.innerHTML=rows.map(function(c,i){return "<div class=\\"c\\"><h3>"+esc(c.fullName||"(no name)")+"</h3>"+' +
-      '((c.title||c.company)?"<div class=\\"sub\\">"+esc([c.title,c.company].filter(Boolean).join(" at "))+"</div>":"")+' +
-      '(c.industry?"<span class=\\"tag\\">"+esc(c.industry)+"</span>":"")+"<div class=\\"row\\">"+' +
-      '(c.phone?"<a class=\\"b\\" href=\\"tel:"+c.phone+"\\">Call</a>":"")+' +
-      '(c.email?"<a class=\\"b\\" href=\\"mailto:"+c.email+"\\">Email</a>":"")+' +
-      '"<button class=\\"b g\\" onclick=\\"dl(DATA["+DATA.indexOf(c)+"])\\">Add to contacts</button>"+' +
-      '"</div></div>";}).join("")||"<p style=\\x27color:#9aa3b2\\x27>No matches.</p>";}' +
-      's.addEventListener("input",render);f.addEventListener("change",render);render();' +
-      '<\/script></main></body></html>';
+      '<input id="s" placeholder="Search name, company, services, keywords..."><select id="cf"></select><select id="lf"></select><div id="list"></div>' +
+      '<' + 'script>' + inner + '<\/script></main></body></html>';
   }
 
 })();
